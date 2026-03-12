@@ -5,9 +5,11 @@ build/
 dist/
 wheels/
 *.egg-info
-
+.chromadb/
+*.bin
 # Virtual environments
 .venv
 .python-version
 .env
 .DS_Store
+

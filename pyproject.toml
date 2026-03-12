@@ -1,7 +1,7 @@
 [project]
 name = "sampling"
 version = "0.1.0"
-description = "Demonstration of sampling, logs and roots with MCP"
+description = "Demonstration of sampling, logs, roots, and RAG with MCP"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -11,10 +11,15 @@ dependencies = [
     "prompt-toolkit>=3.0.51",
     "pyboxen>=1.3.0",
     "python-dotenv>=1.1.0",
+    # RAG dependencies
+    "chromadb>=0.6.0",
+    "pypdf>=4.0.0",
+    "google-genai>=1.0.0",
 ]
 
 [tool.setuptools]
-py-modules = ["client", "server"]
+py-modules = ["client", "server", "rag_server", "rag_demo"]
+packages = ["core", "rag"]
 
 [build-system]
 requires = ["setuptools>=61.0"]
