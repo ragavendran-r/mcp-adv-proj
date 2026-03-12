@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timezone
+from typing import Any, cast
 
 import chromadb
 from google import genai
@@ -29,7 +30,7 @@ class RAGEngine:
       bundled with chromadb. Injectable for testing or model swaps.
     - Cosine similarity: insensitive to document length, important when
       chunking produces variable-length pieces.
-    - Async-native Anthropic client: matches the FastMCP event loop.
+    - Async-native Gemini client: matches the FastMCP event loop.
     """
 
     CHUNKS_COLLECTION = "rag_chunks"
@@ -41,7 +42,7 @@ class RAGEngine:
         self,
         persist_directory: str = "./.chromadb",
         model: str = DEFAULT_MODEL,
-        embedding_function=None,
+        embedding_function: Any = None,
         chunking_config: ChunkingConfig | None = None,
     ):
         self.model = model
@@ -53,7 +54,7 @@ class RAGEngine:
         # Chunk collection stores text + embeddings
         self._chunks_col = self._chroma.get_or_create_collection(
             name=self.CHUNKS_COLLECTION,
-            embedding_function=self._embed_fn,
+            embedding_function=self._embed_fn,  # type: ignore[arg-type]
             metadata={"hnsw:space": "cosine"},
         )
 
@@ -90,7 +91,7 @@ class RAGEngine:
                 "title": document.title,
                 "mime_type": document.mime_type,
                 "chunk_count": document.chunk_count,
-                "ingested_at": document.ingested_at.isoformat(),
+                "ingested_at": document.ingested_at.isoformat() if document.ingested_at else None,
                 "status": document.status.value,
             }],
         )
@@ -125,23 +126,28 @@ class RAGEngine:
             include=["documents", "metadatas", "distances"],
         )
 
+        documents = results["documents"] or []
+        metadatas = results["metadatas"] or []
+        distances = results["distances"] or []
+
         retrieved: list[RetrievedChunk] = []
         for text, meta, distance in zip(
-            results["documents"][0],
-            results["metadatas"][0],
-            results["distances"][0],
+            documents[0] if documents else [],
+            metadatas[0] if metadatas else [],
+            distances[0] if distances else [],
         ):
             # ChromaDB cosine distance ∈ [0, 2]; convert to similarity ∈ [0, 1]
             similarity = 1.0 - (distance / 2.0)
 
+            doc_id = str(meta.get("document_id", ""))
             chunk = Chunk(
                 chunk_id="",
-                source_document_id=meta.get("document_id", ""),
+                source_document_id=doc_id,
                 text=text,
-                chunk_index=meta.get("chunk_index", 0),
-                metadata=meta,
+                chunk_index=cast(int, meta.get("chunk_index", 0)),
+                metadata=dict(meta),
             )
-            title = self._get_document_title(meta.get("document_id", ""))
+            title = self._get_document_title(doc_id)
             retrieved.append(RetrievedChunk(chunk=chunk, score=similarity, document_title=title))
 
         return retrieved
@@ -150,7 +156,7 @@ class RAGEngine:
         try:
             result = self._docs_col.get(ids=[document_id], include=["metadatas"])
             if result["metadatas"]:
-                return result["metadatas"][0].get("title", "Unknown Document")
+                return cast(str, result["metadatas"][0].get("title", "Unknown Document"))
         except Exception:
             pass
         return "Unknown Document"
@@ -213,7 +219,7 @@ Answer:"""
             contents=prompt,
         )
 
-        answer = response.text
+        answer = response.text or ""
 
         return RAGResponse(
             answer=answer,
@@ -235,7 +241,8 @@ Answer:"""
         """
         result = self._docs_col.get(include=["metadatas"])
         documents = []
-        for meta in result["metadatas"]:
+        for _meta in result["metadatas"] or []:
+            meta: dict[str, Any] = dict(_meta)
             doc = Document(
                 document_id=meta["document_id"],
                 file_path=meta["file_path"],
@@ -243,7 +250,7 @@ Answer:"""
                 mime_type=meta["mime_type"],
                 status=DocumentStatus(meta["status"]),
                 chunk_count=meta["chunk_count"],
-                ingested_at=datetime.fromisoformat(meta["ingested_at"]),
+                ingested_at=datetime.fromisoformat(meta["ingested_at"]) if meta.get("ingested_at") else None,
             )
             documents.append(doc)
         return documents
