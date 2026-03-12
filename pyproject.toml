@@ -21,6 +21,37 @@ dependencies = [
 py-modules = ["client", "server", "rag_server", "rag_demo"]
 packages = ["core", "rag"]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "rag_demo.py",
+    "main.py",
+    "client.py",
+    "mcp_client.py",
+    "server.py",
+    "core/cli.py",
+    "core/cli_chat.py",
+    "core/chat.py",
+    ".venv/*",
+    "sampling.egg-info/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
