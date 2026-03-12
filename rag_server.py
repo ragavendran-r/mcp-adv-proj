@@ -66,7 +66,7 @@ async def ingest_document(
         "document_id": document.document_id,
         "title": document.title,
         "chunk_count": document.chunk_count,
-        "ingested_at": document.ingested_at.isoformat(),
+        "ingested_at": document.ingested_at.isoformat() if document.ingested_at else None,
     })
 
 
